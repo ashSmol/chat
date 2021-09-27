@@ -28,17 +28,21 @@ class ChatServer:
             self.process_message(client)
 
     def process_message(self, client):
-        message_from_cient = read_message_from_sock(client)
-        print(f'От клиента: {client}\n Получено сообзение:\n {message_from_cient}')
-        if ACTION in message_from_cient and message_from_cient[ACTION] == PRESENCE and TIME in message_from_cient \
-                and USER_ACCOUNT in message_from_cient and message_from_cient[USER_ACCOUNT][ACCOUNT_NAME] == 'Guest':
-            write_message_to_sock({RESPONSE: 200})
-        write_message_to_sock(
-            {
-                RESPONSE: 400,
-                ERROR: 'Incorrect request'
-            }
-        )
+        try:
+            message_from_cient = read_message_from_sock(client)
+            print(f'От клиента: {client}\n Получено сообзение:\n {message_from_cient}')
+            if ACTION in message_from_cient and message_from_cient[ACTION] == PRESENCE and TIME in message_from_cient \
+                    and USER_ACCOUNT in message_from_cient and message_from_cient[USER_ACCOUNT][
+                ACCOUNT_NAME] == 'Guest':
+                write_message_to_sock({RESPONSE: 200}, client)
+            write_message_to_sock(
+                {
+                    RESPONSE: 400,
+                    ERROR: 'Incorrect request'
+                }, client
+            )
+        except Exception as e:
+            print('Не удалось обработать сообщение', e)
 
 
 chat_server = ChatServer()
