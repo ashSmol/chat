@@ -1,27 +1,15 @@
-import sys
 from socket import *
 
-from common.utils import read_message_from_sock, write_message_to_sock
+from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import *
 
 
 class ChatServer:
     def __init__(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
-        self.start_listen()
 
     def start_listen(self):
-        try:
-            if '-a' in sys.argv:
-                host_addr = sys.argv[sys.argv.index('-a') + 1]
-            if '-p' in sys.argv:
-                port_num = int(sys.argv[sys.argv.index('-p') + 1])
-
-            self.sock.bind((host_addr, port_num))
-        except Exception as e:
-            print('Не удалось найти обязательные параметры сервера. Будут использоваться дефолтные значения')
-            self.sock.bind((DEFAULT_HOST_ADDR, DEFAULT_HOST_PORT))
-
+        self.sock.bind(get_socket_params())
         while True:
             self.sock.listen(MAX_CONNECTIONS)
             client, client_addr = self.sock.accept()
@@ -46,3 +34,4 @@ class ChatServer:
 
 
 chat_server = ChatServer()
+chat_server.start_listen()
