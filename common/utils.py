@@ -21,9 +21,12 @@ def get_socket_params():
     try:
         if '-a' in sys.argv:
             host_addr = sys.argv[sys.argv.index('-a') + 1]
+        else:
+            host_addr = DEFAULT_HOST_ADDR
         if '-p' in sys.argv:
             port_num = int(sys.argv[sys.argv.index('-p') + 1])
-
+        else:
+            port_num = DEFAULT_HOST_PORT
     except Exception:
         print('Не удалось найти обязательные параметры сервера. Будут использоваться дефолтные значения')
         host_addr = DEFAULT_HOST_ADDR
