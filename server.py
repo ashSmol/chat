@@ -6,32 +6,31 @@ from common.vars import *
 
 class ChatServer:
     def __init__(self):
-        self.sock = socket(AF_INET, SOCK_STREAM)
+        self.sock = None
 
     def start_listen(self):
+        self.sock = socket(AF_INET, SOCK_STREAM)
         self.sock.bind(get_socket_params())
         while True:
             self.sock.listen(MAX_CONNECTIONS)
             client, client_addr = self.sock.accept()
-            self.process_message(client)
+            message = read_message_from_sock(client)
+            answer = self.process_message(message)
+            write_message_to_sock(answer, client)
 
-    def process_message(self, client):
+    def process_message(self, message):
         try:
-            message_from_cient = read_message_from_sock(client)
-            print(f'От клиента: {client}\n Получено сообзение:\n {message_from_cient}')
-            if ACTION in message_from_cient and message_from_cient[ACTION] == PRESENCE and TIME in message_from_cient \
-                    and USER_ACCOUNT in message_from_cient and message_from_cient[USER_ACCOUNT][
-                ACCOUNT_NAME] == 'Guest':
-                write_message_to_sock({RESPONSE: 200}, client)
-            write_message_to_sock(
-                {
-                    RESPONSE: 400,
-                    ERROR: 'Incorrect request'
-                }, client
-            )
+            if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
+                    and USER_ACCOUNT in message and message[USER_ACCOUNT][ACCOUNT_NAME] == 'Guest':
+                return {RESPONSE: 200}
+            return {
+                RESPONSE: 400,
+                ERROR: 'Incorrect request'
+            }
         except Exception as e:
             print('Не удалось обработать сообщение', e)
 
 
-chat_server = ChatServer()
-chat_server.start_listen()
+if __name__ == '__main__':
+    chat_server = ChatServer()
+    chat_server.start_listen()
