@@ -1,7 +1,7 @@
 import unittest
 
 from client import ChatClient
-from common.vars import RESPONSE, ERROR, TIME
+from common.vars import RESPONSE, ERROR, TIME, ACTION, PRESENCE, USER_ACCOUNT, ACCOUNT_NAME
 
 
 class TestAnswerProcessing(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestAnswerProcessing(unittest.TestCase):
     def test_create_presense(self):
         presence_rq = ChatClient().create_presence()
         presence_rq[TIME] = 123.123
-        self.assertEqual(presence_rq, {'action': 'presence', 'time': 123.123, 'user_account': {'acc_name': 'Guest'}})
+        self.assertEqual(presence_rq, {ACTION: PRESENCE, TIME: 123.123, USER_ACCOUNT: {ACCOUNT_NAME: 'Guest'}})
 
     if __name__ == '__main__':
         unittest.main()
