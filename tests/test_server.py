@@ -1,20 +1,12 @@
-import json
+import time
 import time
 import unittest
-from unittest import mock
 
-from common.vars import ENCODING, ACTION, PRESENCE, TIME, USER_ACCOUNT, ACCOUNT_NAME, RESPONSE, ERROR
+from common.vars import ACTION, PRESENCE, TIME, USER_ACCOUNT, ACCOUNT_NAME, RESPONSE, ERROR
 from server import ChatServer
 
 
-class MyTestCase(unittest.TestCase):
-    def setUp(self) -> None:
-        self.mock_socket = mock.Mock()
-        self.mock_socket.recv.return_value = json.dumps({'some_data': 123}).encode(ENCODING)
-
-    # def test_something(self):
-    #     message = read_message_from_sock(self.mock_socket)
-    #     self.assertEqual(message, {'some_data': 123})
+class TestServer(unittest.TestCase):
 
     def test_process_message_ok(self):
         message = {
