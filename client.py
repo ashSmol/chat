@@ -1,6 +1,7 @@
 """Программа-клиент"""
 
 import json
+import logging
 import socket
 import time
 
@@ -12,11 +13,19 @@ from common.vars import ACTION, PRESENCE, TIME, USER_ACCOUNT, ACCOUNT_NAME, \
 class ChatClient:
 
     def __init__(self):
+        self.logger = logging.getLogger('app.client')
+        self.logger.debug('Init chat client object')
         self.sock = None
 
     def run_socket(self):
+        self.logger.debug('running socket')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(get_socket_params())
+        addr, port = get_socket_params()
+        try:
+            self.sock.connect((addr, port))
+            self.logger.info(f'connected to server {addr}:{port}')
+        except Exception as e:
+            self.logger.critical(f'fail to connect to server {addr}:{port} - {e}')
 
     def create_presence(self, account_name='Guest'):
         result = {
@@ -26,6 +35,7 @@ class ChatClient:
                 ACCOUNT_NAME: account_name
             }
         }
+        self.logger.info(f'сформировано сообщение {result}')
         return result
 
     def process_ans(self, message):
@@ -33,15 +43,16 @@ class ChatClient:
             if message[RESPONSE] == 200:
                 return '200 : OK'
             return f'400 : {message[ERROR]}'
+        self.logger.error('Сервер вернул некорректный ответ')
         raise ValueError
 
     def send_message(self):
         write_message_to_sock(self.create_presence(), self.sock)
         try:
             answer = self.process_ans(read_message_from_sock(self.sock))
-            print(answer)
+            self.logger.info(f'сервер вернул ответ: "{answer}"')
         except (ValueError, json.JSONDecodeError):
-            print('Не удалось декодировать сообщение сервера.')
+            self.logger.error('Не удалось декодировать сообщение сервера.')
 
 
 if __name__ == '__main__':
