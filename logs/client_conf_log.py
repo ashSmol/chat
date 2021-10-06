@@ -12,9 +12,10 @@ console_out_handler = StreamHandler(sys.stdout)
 console_out_handler.setFormatter(client_logs_formatter)
 console_out_handler.setLevel(logging.DEBUG)
 
-log_file_handler = logging.handlers.TimedRotatingFileHandler(log_file_path, 'D', encoding='utf8')
+log_file_handler = logging.handlers.TimedRotatingFileHandler(log_file_path, when="S", interval=30, backupCount=10,
+                                                             encoding='utf8')
 log_file_handler.setFormatter(client_logs_formatter)
-log_file_handler.setLevel(logging.ERROR)
+log_file_handler.setLevel(logging.DEBUG)
 
 logger = getLogger('app.client')
 logger.addHandler(console_out_handler)
