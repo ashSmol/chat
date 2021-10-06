@@ -6,9 +6,8 @@ import socket
 import time
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
-from common.vars import ACTION, PRESENCE, TIME, USER_ACCOUNT, ACCOUNT_NAME, \
-    RESPONSE, ERROR
-
+from common.vars import ACTION, PRESENCE, TIME, USER_ACCOUNT, RESPONSE, ERROR, ACCOUNT_NAME
+import logs.client_conf_log
 
 class ChatClient:
 
@@ -47,12 +46,14 @@ class ChatClient:
         raise ValueError
 
     def send_message(self):
-        write_message_to_sock(self.create_presence(), self.sock)
         try:
+            write_message_to_sock(self.create_presence(), self.sock)
             answer = self.process_ans(read_message_from_sock(self.sock))
             self.logger.info(f'сервер вернул ответ: "{answer}"')
         except (ValueError, json.JSONDecodeError):
             self.logger.error('Не удалось декодировать сообщение сервера.')
+        except TypeError as e:
+            self.logger.error(f'incorrect or None message received from server. Error: {e}' )
 
 
 if __name__ == '__main__':
