@@ -5,7 +5,7 @@ import time
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import ACTION, PRESENCE, TIME, USER_ACCOUNT, RESPONSE, ERROR, ACCOUNT_NAME
-# import logs.client_conf_log
+import logs.client_conf_log
 from logs.system_logger import SystemLogger
 
 
@@ -13,7 +13,7 @@ class ChatClient:
     @SystemLogger()
     def __init__(self):
         self.logger = logging.getLogger('app.client')
-        self.logger.debug('Init chat client object')
+        # self.logger.debug('Init chat client object')
         self.sock = None
 
     @SystemLogger()

@@ -3,7 +3,7 @@ from socket import *
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import *
-# import logs.server_conf_log
+import logs.server_conf_log
 from logs.system_logger import SystemLogger
 
 
