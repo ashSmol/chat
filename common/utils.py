@@ -5,9 +5,12 @@ from common.vars import ENCODING, MAX_PACKAGE_LENGTH, DEFAULT_HOST_ADDR, DEFAULT
 
 
 def write_message_to_sock(message, sock):
-    json_obj = json.dumps(message)
-    bytes_message = json_obj.encode(ENCODING)
-    sock.send(bytes_message)
+    try:
+        json_obj = json.dumps(message)
+        bytes_message = json_obj.encode(ENCODING)
+        sock.send(bytes_message)
+    except Exception as e:
+        print(f'не удалось отправить сообщение!!! \n{e}')
 
 
 def read_message_from_sock(sock):

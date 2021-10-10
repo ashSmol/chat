@@ -9,10 +9,17 @@ MAX_CONNECTIONS = 5
 MAX_PACKAGE_LENGTH = 1024
 
 ACTION = 'action'
+MESSAGE = 'message'
+MESSAGE_TEXT = 'message_text'
 TIME = 'time'
 USER_ACCOUNT = 'user_account'
 ACCOUNT_NAME = 'acc_name'
+SENDER = 'sender'
+RECEIVER = 'receiver'
+DEFAULT_CLIENT_TYPE = RECEIVER
 
 PRESENCE = 'presence'
 RESPONSE = 'response'
 ERROR = 'error'
+
+CLIENT_TYPES = [SENDER, RECEIVER]

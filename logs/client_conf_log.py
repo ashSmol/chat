@@ -1,11 +1,13 @@
 import logging
 import os
 import sys
+import traceback
 from logging import getLogger, StreamHandler, Formatter
 
 log_file_path = os.path.join('logs', 'client_logs', 'client.log')
-
-client_logs_formatter = Formatter('%(asctime)-25s %(levelname)-10s %(module)-20s %(message)s')
+module = traceback.format_stack()[0].strip().split()[1]
+module = module[module.rfind('\\') + 1: -5]
+client_logs_formatter = Formatter(f'%(asctime)-25s %(levelname)-10s {module}  %(message)s')
 
 console_out_handler = StreamHandler(sys.stdout)
 console_out_handler.setFormatter(client_logs_formatter)
