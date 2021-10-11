@@ -11,7 +11,7 @@ class Launcher:
 
     def start_client(self, client_type):
         if client_type in CLIENT_TYPES:
-            self.PROCESSES.append(subprocess.Popen(f'python client_.py -m {client_type}',
+            self.PROCESSES.append(subprocess.Popen(f'python client.py -m {client_type}',
                                                    creationflags=subprocess.CREATE_NEW_CONSOLE))
 
     def start_all(self):

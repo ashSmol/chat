@@ -2,6 +2,8 @@ import inspect
 import logging
 import sys
 import traceback
+import logs.client_conf_log
+import logs.server_conf_log
 
 
 class SystemLogger:
