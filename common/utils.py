@@ -1,3 +1,4 @@
+import argparse
 import json
 import sys
 
@@ -20,18 +21,12 @@ def read_message_from_sock(sock):
 
 
 def get_socket_params():
-    try:
-        if '-a' in sys.argv:
-            host_addr = sys.argv[sys.argv.index('-a') + 1]
-        else:
-            host_addr = DEFAULT_HOST_ADDR
-        if '-p' in sys.argv:
-            port_num = int(sys.argv[sys.argv.index('-p') + 1])
-        else:
-            port_num = DEFAULT_HOST_PORT
-    except Exception:
-        print('Не удалось найти обязательные параметры сервера. Будут использоваться дефолтные значения')
-        host_addr = DEFAULT_HOST_ADDR
-        port_num = DEFAULT_HOST_PORT
-
-    return host_addr, port_num
+    """Создаём парсер аргументов коммандной строки
+    и читаем параметры, возвращаем 3 параметра
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', default=DEFAULT_HOST_ADDR, nargs='?')
+    parser.add_argument('-p', default=DEFAULT_HOST_PORT, type=int, nargs='?')
+    parser.add_argument('-n', default='user_151', nargs='?')
+    namespace = parser.parse_args(sys.argv[1:])
+    return namespace.a, namespace.p, namespace.n

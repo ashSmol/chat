@@ -12,6 +12,7 @@ from logs.system_logger import SystemLogger
 class ChatServer:
     @SystemLogger()
     def __init__(self):
+        self.contacts = dict()
         self.messages_to_send = []
         self.all_clients = []
         self.read_queue = []
@@ -22,20 +23,22 @@ class ChatServer:
         self.sock = None
 
     def collect_all_messages(self):
-        if self.read_queue:
+        if len(self.read_queue) > 0:
             for client in self.read_queue:
                 try:
-                    self.received_messages.append(read_message_from_sock(client))
+                    message = read_message_from_sock(client)
+                    self.contacts.update({message.get(ACCOUNT_NAME): client})
+                    self.received_messages.append(message)
                 except:
-                    self.logger.info(f'Клиент {client.getpeername()} отключился.')
-                    # if self.all_clients:
-                    #     self.all_clients.remove(client)
-                    #     self.read_queue.remove(client)
+                    if client:
+                        self.logger.info(f'Клиент {client.getpeername()} отключился.')
+                        self.all_clients.remove(client)
+                        self.read_queue.remove(client)
 
     @SystemLogger()
     def start_listen(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
-        addr, port = get_socket_params()
+        addr, port, _ = get_socket_params()
         self.sock.bind((addr, port))
         self.sock.settimeout(0.5)
         self.logger.info(f'socket bind to addr {addr}:{port}')
@@ -64,21 +67,15 @@ class ChatServer:
     @SystemLogger()
     def process_message(self, message):
         try:
-            self.logger.critical("!!! crit error process_message")
             if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
-                    and USER_ACCOUNT in message and message[USER_ACCOUNT][ACCOUNT_NAME] == 'Guest':
-                self.logger.info(f'received valid message "{message}"')
-                return {RESPONSE: 200}
+                    and ACCOUNT_NAME in message:
+                self.logger.info(f'received valid message "{message}" from user with name: {message[ACCOUNT_NAME]}')
+                return message[ACCOUNT_NAME], {RESPONSE: 200}
 
             elif ACTION in message and message[ACTION] == MESSAGE and MESSAGE_TEXT in message and TIME in message \
-                    and USER_ACCOUNT in message and message[USER_ACCOUNT][ACCOUNT_NAME] == 'guest':
+                    and SENDER in message and RECEIVER in message:
                 self.logger.info(f'received valid message "{message}"')
-                return {
-                    ACTION: MESSAGE,
-                    SENDER: message[USER_ACCOUNT][ACCOUNT_NAME],
-                    TIME: time.time(),
-                    MESSAGE_TEXT: message[MESSAGE_TEXT]
-                }
+                return message[RECEIVER], message
 
             self.logger.info(f'received invalid message "{message}"')
             return {
@@ -90,14 +87,27 @@ class ChatServer:
             self.logger.error(f'fail to process message: "{message}"')
 
     def send_all(self):
-        for message in self.messages_to_send:
-            for receiver in self.write_queue:
-                try:
-                    write_message_to_sock(message, receiver)
-                except Exception as e:
-                    self.logger.info(
-                        f'получатель сообщения отключился.  Адрес получателя: {receiver}. Сообщение об ошибки: {e}')
-            self.messages_to_send.remove(message)
+        for pair in self.messages_to_send:
+            receiver_name, message = pair
+            if receiver_name in self.contacts:
+                receiver = self.contacts[receiver_name]
+                # if receiver in self.write_queue:
+            else:
+                receiver = self.contacts[message[SENDER]]
+                message = {
+                    ACTION: MESSAGE,
+                    RECEIVER: receiver_name,
+                    SENDER: 'SERVER',
+                    TIME: time.time(),
+                    MESSAGE_TEXT: 'Ошибка!!! Клиента с таким именем не существует!!!'
+                }
+            try:
+                write_message_to_sock(message, receiver)
+            except Exception as e:
+                self.logger.info(
+                    f'получатель сообщения отключился.  Адрес получателя: {receiver}. Сообщение об ошибки: {e}')
+            self.messages_to_send.remove(pair)
+
 
 if __name__ == '__main__':
     chat_server = ChatServer()

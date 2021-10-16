@@ -9,16 +9,15 @@ class Launcher:
     def start_server(self):
         self.PROCESSES.append(subprocess.Popen('python server.py', creationflags=subprocess.CREATE_NEW_CONSOLE))
 
-    def start_client(self, client_type):
-        if client_type in CLIENT_TYPES:
-            self.PROCESSES.append(subprocess.Popen(f'python client.py -m {client_type}',
-                                                   creationflags=subprocess.CREATE_NEW_CONSOLE))
+    def start_client(self, client_name):
+        self.PROCESSES.append(subprocess.Popen(f'python client.py -n {client_name}',
+                                               creationflags=subprocess.CREATE_NEW_CONSOLE))
 
     def start_all(self):
         self.start_server()
-        for i in range(2):
-            self.start_client(SENDER)
-            self.start_client(RECEIVER)
+        self.start_client('user_1')
+        self.start_client('user_2')
+        self.start_client('user_3')
 
     def close_all(self):
         for process in self.PROCESSES:
