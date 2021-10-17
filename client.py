@@ -3,6 +3,7 @@ import logging
 import socket
 
 import time
+from logging import Logger
 from threading import Thread
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
@@ -22,7 +23,6 @@ class ChatClient:
     def run_socket(self):
         self.logger.debug('running socket')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # addr, port = get_socket_params()
         try:
             self.sock.connect((self.host_addr, self.host_port))
             self.logger.info(f'connected to server {self.host_addr}:{self.host_port}')
@@ -48,37 +48,29 @@ class ChatClient:
         self.logger.error('Сервер вернул некорректный ответ')
         raise ValueError
 
-    # @SystemLogger()
-    # def send_message(self):
-    #     try:
-    #         write_message_to_sock(self.create_presence(), self.sock)
-    #         answer = self.process_ans(read_message_from_sock(self.sock))
-    #         self.logger.info(f'сервер вернул ответ: "{answer}"')
-    #     except (ValueError, json.JSONDecodeError):
-    #         self.logger.error('Не удалось декодировать сообщение сервера.')
-    #     except TypeError as e:
-    #         self.logger.error(f'incorrect or None message received from server. Error: {e}')
-
+    @SystemLogger()
     def run_client(self):
-        print(self.client_name)
+        print(f'Имя клиента: {self.client_name}')
         write_message_to_sock(self.create_presence(), self.sock)
-        print(self.process_ans(read_message_from_sock(self.sock)))
-
+        presence_answer = self.process_ans(read_message_from_sock(self.sock))
+        if presence_answer == '200 : OK':
+            print('Соединение с сервером успешно установлено.')
+        else:
+            print(f'Сервер вернул ошибку: {presence_answer}')
         sending_thread = Thread(target=self.send_message)
         sending_thread.daemon = True
         sending_thread.start()
-        # sending_thread.join()
 
         receiving_thread = Thread(target=self.receive_message)
         receiving_thread.daemon = True
         receiving_thread.start()
-        # receiving_thread.join()
         while True:
             time.sleep(1)
             if receiving_thread.is_alive() and sending_thread.is_alive():
                 continue
             break
 
+    @SystemLogger()
     def send_message(self):
         while True:
             message_receiver = input('Введите адресата сообщения: ')
@@ -89,6 +81,7 @@ class ChatClient:
             except socket.error as e:
                 self.logger.error(f'потеряно соединение с сервером. {e}')
 
+    @SystemLogger()
     def create_text_message(self, receiver, text):
         return {
             ACTION: MESSAGE,
@@ -98,13 +91,14 @@ class ChatClient:
             MESSAGE_TEXT: text
         }
 
+    @SystemLogger()
     def receive_message(self):
         while True:
             try:
                 message = read_message_from_sock(self.sock)
                 if message:
                     print(
-                        f'От пользователя {message[SENDER]} получено сообщение!!!\n - {message[MESSAGE_TEXT].upper()}')
+                        f'\n От пользователя {message[SENDER]} получено сообщение:\n - {message[MESSAGE_TEXT]}')
             except socket.error as e:
                 self.logger.error(f'потеряно соединение с сервером. {e}')
 
