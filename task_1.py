@@ -1,9 +1,6 @@
 import ipaddress
-import re
 import socket
 import subprocess
-
-import chardet as chardet
 
 
 def host_ping(hosts_list):
@@ -16,14 +13,11 @@ def host_ping(hosts_list):
             except socket.gaierror:
                 print(f'No such host {host}')
                 continue
-        process = subprocess.Popen(f'ping {ip}', stdout=subprocess.PIPE)
-        out = process.stdout.read()
-        encoding = chardet.detect(out)['encoding']
-        decoded_out = out.decode(encoding)
-        if re.findall('.*потерь', decoded_out)[0].find('100') > 0:
-            print(f'host {host} not available')
+        response = subprocess.run("ping -n 1 -w 1000 " + str(ip), stdout=subprocess.PIPE).returncode
+        if response == 0:
+            print(f'{host} is up!')
         else:
-            print(f'host {host} available')
+            print(f'{host} is down!')
 
 
 if __name__ == '__main__':
