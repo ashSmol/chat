@@ -4,7 +4,7 @@ import sys
 import traceback
 from logging import getLogger, StreamHandler, Formatter
 
-log_file_path = os.path.join('logs', 'client_logs', 'client.log')
+from common.utils import get_log_file
 
 client_logs_formatter = Formatter(f'%(asctime)-25s %(levelname)-10s %(module)-10s  %(message)s')
 
@@ -12,7 +12,7 @@ client_logs_formatter = Formatter(f'%(asctime)-25s %(levelname)-10s %(module)-10
 # console_out_handler.setFormatter(client_logs_formatter)
 # console_out_handler.setLevel(logging.DEBUG)
 
-log_file_handler = logging.FileHandler(log_file_path, encoding='utf8')
+log_file_handler = logging.FileHandler(get_log_file('client.log'), encoding='utf8')
 log_file_handler.setFormatter(client_logs_formatter)
 log_file_handler.setLevel(logging.DEBUG)
 

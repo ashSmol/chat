@@ -1,8 +1,18 @@
 import argparse
 import json
+import os
 import sys
 
 from common.vars import ENCODING, MAX_PACKAGE_LENGTH, DEFAULT_HOST_ADDR, DEFAULT_HOST_PORT
+
+
+def get_log_file(log_file_name: str) -> str:
+    log_file_path = os.path.join('logs', 'logs')
+    full_path_log = os.path.join(log_file_path, log_file_name)
+    if not os.path.exists(full_path_log):
+        os.makedirs(log_file_path, exist_ok=True)
+        open(full_path_log, 'a').close()
+    return full_path_log
 
 
 def write_message_to_sock(message, sock):
