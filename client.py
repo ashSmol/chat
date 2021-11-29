@@ -12,14 +12,57 @@ from common.vars import ACTION, PRESENCE, TIME, RESPONSE, ERROR, ACCOUNT_NAME, M
 import logs.client_conf_log
 from logs.system_logger import SystemLogger
 
+import dis
+import socket
 
-class ChatClient:
-    @SystemLogger()
+
+class ClientVerifierMeta(type):
+    def __init__(cls, clsname, bases, clsdict):
+        for attr in clsdict:
+            value = clsdict[attr]
+            if callable(value):
+                clsdict[attr] = SystemLogger()
+        type.__init__(cls, clsname, bases, clsdict)
+
+    def __new__(self, clsname, bases, clsdict):
+        is_tcp_connection = False
+        for key, value in clsdict.items():
+            if isinstance(value, socket.socket):
+                raise ValueError
+            if callable(value):
+                dis_str = dis.code_info(value)
+                if callable(value):
+                    dis_str = dis.code_info(value)
+                    if (dis_str.find('socket') > 0) & (dis_str.find('accept') > 0):
+                        raise Exception('"Accept" operation is not allowed for ChatClient')
+                    if (dis_str.find('socket') > 0) & (dis_str.find('listen') > 0):
+                        raise Exception('"Listen" operation is not allowed for ChatClient')
+                if (dis_str.find('socket') > 0) & (dis_str.find('AF_INET') > 0):
+                    is_tcp_connection = True
+        if not is_tcp_connection:
+            raise ConnectionError('Connection type shoud be TCP!!!')
+        return type.__new__(self, clsname, bases, clsdict)
+
+    # def __init__(self, clsname, bases, clsdict):
+    #     for key, value in clsdict.items():
+    #         if isinstance(value, socket.socket):
+    #             raise ValueError
+    #         if callable(value):
+    #             dis_str = dis.code_info(value)
+    #             if (dis_str.find('socket') > 0) & (dis_str.find('accept') > 0):
+    #                 raise Exception('"Accept" operation is not allowed for ChatClient')
+    #             if (dis_str.find('socket') > 0) & (dis_str.find('listen') > 0):
+    #                 raise Exception('"Listen" operation is not allowed for ChatClient')
+    #     type.__init__(self, clsname, bases, clsdict)
+
+
+class ChatClient(metaclass=ClientVerifierMeta):
+    # @SystemLogger()
     def __init__(self):
         self.logger = logging.getLogger('app.client')
         self.host_addr, self.host_port, self.client_name = get_socket_params()
 
-    @SystemLogger()
+    # @SystemLogger()
     def run_socket(self):
         self.logger.debug('running socket')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,7 +72,7 @@ class ChatClient:
         except Exception as e:
             self.logger.critical(f'fail to connect to server {self.host_addr}:{self.host_port} - {e}')
 
-    @SystemLogger()
+    #@SystemLogger()
     def create_presence(self):
         result = {
             ACTION: PRESENCE,
@@ -39,7 +82,7 @@ class ChatClient:
         self.logger.info(f'сформировано сообщение {result}')
         return result
 
-    @SystemLogger()
+    #@SystemLogger()
     def process_ans(self, message):
         if RESPONSE in message:
             if message[RESPONSE] == 200:
@@ -48,7 +91,7 @@ class ChatClient:
         self.logger.error('Сервер вернул некорректный ответ')
         raise ValueError
 
-    @SystemLogger()
+    #@SystemLogger()
     def run_client(self):
         print(f'Имя клиента: {self.client_name}')
         write_message_to_sock(self.create_presence(), self.sock)
@@ -70,7 +113,7 @@ class ChatClient:
                 continue
             break
 
-    @SystemLogger()
+    #@SystemLogger()
     def send_message(self):
         while True:
             message_receiver = input('Введите адресата сообщения: ')
@@ -81,7 +124,7 @@ class ChatClient:
             except socket.error as e:
                 self.logger.error(f'потеряно соединение с сервером. {e}')
 
-    @SystemLogger()
+    #@SystemLogger()
     def create_text_message(self, receiver, text):
         return {
             ACTION: MESSAGE,
@@ -91,7 +134,7 @@ class ChatClient:
             MESSAGE_TEXT: text
         }
 
-    @SystemLogger()
+    #@SystemLogger()
     def receive_message(self):
         while True:
             try:

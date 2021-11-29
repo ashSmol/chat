@@ -1,3 +1,4 @@
+import dis
 import logging
 import select
 import socket
@@ -9,8 +10,47 @@ from common.vars import *
 from logs.system_logger import SystemLogger
 
 
-class ChatServer:
-    @SystemLogger()
+class NonNegative:
+    def __get__(self, instance, owner):
+        return instance.__dict__[self.name]
+
+    def __set__(self, instance, value):
+        if value < 0:
+            raise ValueError('Cannot be negative.')
+        instance.__dict__[self.name] = value
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+
+class ServerVerifierMeta(type):
+    def __init__(cls, clsname, bases, clsdict):
+        for attr in clsdict:
+            value = clsdict[attr]
+            if callable(value):
+                clsdict[attr] = SystemLogger()
+        type.__init__(cls, clsname, bases, clsdict)
+
+    def __new__(self, clsname, bases, clsdict):
+        is_tcp_connection = False
+        for key, value in clsdict.items():
+            if isinstance(value, socket):
+                raise ValueError
+            if callable(value):
+                dis_str = dis.code_info(value)
+                if (dis_str.find('socket') > 0) & (dis_str.find('connect') > 0):
+                    raise Exception('"Accept" operation is not allowed for ChatClient')
+                if (dis_str.find('socket') > 0) & (dis_str.find('AF_INET') > 0):
+                    is_tcp_connection = True
+        if not is_tcp_connection:
+            raise ConnectionError('Connection type shoud be TCP!!!')
+        return type.__new__(self, clsname, bases, clsdict)
+
+
+class ChatServer(metaclass=ServerVerifierMeta):
+    # @SystemLogger()
+    port = NonNegative()
+
     def __init__(self):
         self.contacts = dict()
         self.messages_to_send = []
@@ -35,13 +75,13 @@ class ChatServer:
                         self.all_clients.remove(client)
                         self.read_queue.remove(client)
 
-    @SystemLogger()
+    # @SystemLogger()
     def start_listen(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
-        addr, port, _ = get_socket_params()
-        self.sock.bind((addr, port))
+        addr, self.port, _ = get_socket_params()
+        self.sock.bind((addr, self.port))
         self.sock.settimeout(0.5)
-        self.logger.info(f'socket bind to addr {addr}:{port}')
+        self.logger.info(f'socket bind to addr {addr}:{self.port}')
         while True:
             self.sock.listen(MAX_CONNECTIONS)
             try:
@@ -64,7 +104,7 @@ class ChatServer:
                 self.messages_to_send.append(self.process_message(message))
                 self.received_messages.remove(message)
 
-    @SystemLogger()
+    # @SystemLogger()
     def process_message(self, message):
         try:
             if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
