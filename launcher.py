@@ -1,4 +1,6 @@
+import os
 import subprocess
+import time
 
 from common.vars import CLIENT_TYPES, SENDER, RECEIVER
 
@@ -13,8 +15,9 @@ class Launcher:
         self.PROCESSES.append(subprocess.Popen(f'python client.py -n {client_name}',
                                                creationflags=subprocess.CREATE_NEW_CONSOLE))
 
-    def start_all(self):
+    def start_win(self):
         self.start_server()
+        time.sleep(1)
         self.start_client('user_1')
         self.start_client('user_2')
         self.start_client('user_3')
@@ -24,9 +27,20 @@ class Launcher:
             process.kill()
 
 
-launcher = Launcher()
-launcher.start_all()
-command = ''
-while command != 'close':
-    command = input('Enter "close" to close all windows:')
-launcher.close_all()
+    def start_posix(self):
+        self.PROCESSES.append(subprocess.Popen('open -W -a Terminal server.command'.split()))
+        time.sleep(1)
+        self.PROCESSES.append(subprocess.Popen('open -W -a Terminal client1.command'.split()))
+        self.PROCESSES.append(subprocess.Popen('open -W -a Terminal client2.command'.split()))
+
+
+if __name__ == '__main__':
+    launcher = Launcher()
+    if not os.name == 'posix':
+        launcher.start_win()
+    else:
+        launcher.start_posix()
+    command = ''
+    while command != 'close':
+        command = input('Enter "close" to close all windows:')
+    launcher.close_all()
