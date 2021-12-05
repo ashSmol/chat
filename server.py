@@ -5,9 +5,12 @@ import socket
 import time
 from socket import *
 
+from sqlalchemy.orm import sessionmaker
+
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import *
 from logs.system_logger import SystemLogger
+from model import ChatClientModel
 
 
 class NonNegative:
@@ -61,6 +64,8 @@ class ChatServer(metaclass=ServerVerifierMeta):
         self.logger = logging.getLogger('app.server')
         self.logger.info('created server object')
         self.sock = None
+        Session = sessionmaker(bind=DB_ENGINE)
+        self.db_session = Session()
 
     def collect_all_messages(self):
         if len(self.read_queue) > 0:
@@ -75,7 +80,6 @@ class ChatServer(metaclass=ServerVerifierMeta):
                         self.all_clients.remove(client)
                         self.read_queue.remove(client)
 
-    # @SystemLogger()
     def start_listen(self):
         self.sock = socket(AF_INET, SOCK_STREAM)
         addr, self.port, _ = get_socket_params()
@@ -98,6 +102,15 @@ class ChatServer(metaclass=ServerVerifierMeta):
             self.build_responses()
             self.send_all()
 
+    def store_clients_to_db(self, login: str, info: str):
+        try:
+            self.db_session.add(ChatClientModel(login, info))
+        except Exception as err:
+            print(err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
+
     def build_responses(self):
         if self.received_messages:  # and self.write_queue:
             for message in self.received_messages:
@@ -110,6 +123,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
             if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
                     and ACCOUNT_NAME in message:
                 self.logger.info(f'received valid message "{message}" from user with name: {message[ACCOUNT_NAME]}')
+                self.store_clients_to_db(message[ACCOUNT_NAME], message[TIME])
                 return message[ACCOUNT_NAME], {RESPONSE: 200}
 
             elif ACTION in message and message[ACTION] == MESSAGE and MESSAGE_TEXT in message and TIME in message \

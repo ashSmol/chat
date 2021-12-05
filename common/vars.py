@@ -1,7 +1,9 @@
+from sqlalchemy import create_engine
+
 DEFAULT_HOST_ADDR = '127.0.0.1'
 
 DEFAULT_HOST_PORT = 7777
-
+DB_ENGINE = create_engine('sqlite:///db.sqlite', echo=True)
 ENCODING = 'utf-8'
 
 MAX_CONNECTIONS = 5
