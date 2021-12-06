@@ -5,12 +5,13 @@ import socket
 import time
 from socket import *
 
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import *
 from logs.system_logger import SystemLogger
-from model import ChatClientModel
+from model import ChatClientModel, ClientHistory
 
 
 class NonNegative:
@@ -103,8 +104,22 @@ class ChatServer(metaclass=ServerVerifierMeta):
             self.send_all()
 
     def store_clients_to_db(self, login: str, info: str):
+        # проверка есть ли в базе такой клиент
+        client_id = self.db_session.query(ChatClientModel).filter_by(login=login).first()
         try:
-            self.db_session.add(ChatClientModel(login, info))
+            if not client_id:
+                self.db_session.add(ChatClientModel(login, info))
+        except Exception as err:
+            print(err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
+
+    def store_history_to_db(self, login: str, time_: str, message_text: str):
+        try:
+            client_id = self.db_session.query(ChatClientModel).filter_by(login=login).first()
+            if client_id:
+                self.db_session.add(ClientHistory(int(client_id.id), time_, message_text))
         except Exception as err:
             print(err)
             self.db_session.rollback()
@@ -123,11 +138,16 @@ class ChatServer(metaclass=ServerVerifierMeta):
             if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
                     and ACCOUNT_NAME in message:
                 self.logger.info(f'received valid message "{message}" from user with name: {message[ACCOUNT_NAME]}')
-                self.store_clients_to_db(message[ACCOUNT_NAME], message[TIME])
+                try:
+                    self.store_clients_to_db(message[ACCOUNT_NAME], message[TIME])
+                except DBAPIError as err:
+                    print(err)
+
                 return message[ACCOUNT_NAME], {RESPONSE: 200}
 
             elif ACTION in message and message[ACTION] == MESSAGE and MESSAGE_TEXT in message and TIME in message \
                     and SENDER in message and RECEIVER in message:
+                self.store_history_to_db(message[SENDER], message[TIME], message[MESSAGE_TEXT])
                 self.logger.info(f'received valid message "{message}"')
                 return message[RECEIVER], message
 

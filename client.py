@@ -61,6 +61,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
     def __init__(self):
         self.logger = logging.getLogger('app.client')
         self.host_addr, self.host_port, self.client_name = get_socket_params()
+        self.client_name = 'user_111'
 
     # @SystemLogger()
     def run_socket(self):
