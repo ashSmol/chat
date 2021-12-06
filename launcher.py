@@ -25,6 +25,7 @@ class Launcher:
     def close_all(self):
         for process in self.PROCESSES:
             process.kill()
+            # TODO FIX closing all processes, as now they do not kelled in MacOs
 
 
     def start_posix(self):
