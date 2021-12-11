@@ -61,7 +61,6 @@ class ChatClient(metaclass=ClientVerifierMeta):
     def __init__(self):
         self.logger = logging.getLogger('app.client')
         self.host_addr, self.host_port, self.client_name = get_socket_params()
-        self.client_name = 'user_111'
 
     # @SystemLogger()
     def run_socket(self):
@@ -73,7 +72,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
         except Exception as e:
             self.logger.critical(f'fail to connect to server {self.host_addr}:{self.host_port} - {e}')
 
-    #@SystemLogger()
+    # @SystemLogger()
     def create_presence(self):
         result = {
             ACTION: PRESENCE,
@@ -83,7 +82,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
         self.logger.info(f'сформировано сообщение {result}')
         return result
 
-    #@SystemLogger()
+    # @SystemLogger()
     def process_ans(self, message):
         if RESPONSE in message:
             if message[RESPONSE] == 200:
@@ -92,7 +91,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
         self.logger.error('Сервер вернул некорректный ответ')
         raise ValueError
 
-    #@SystemLogger()
+    # @SystemLogger()
     def run_client(self):
         print(f'Имя клиента: {self.client_name}')
         write_message_to_sock(self.create_presence(), self.sock)
@@ -114,7 +113,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
                 continue
             break
 
-    #@SystemLogger()
+    # @SystemLogger()
     def send_message(self):
         while True:
             message_receiver = input('Введите адресата сообщения: ')
@@ -125,7 +124,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
             except socket.error as e:
                 self.logger.error(f'потеряно соединение с сервером. {e}')
 
-    #@SystemLogger()
+    # @SystemLogger()
     def create_text_message(self, receiver, text):
         return {
             ACTION: MESSAGE,
@@ -135,7 +134,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
             MESSAGE_TEXT: text
         }
 
-    #@SystemLogger()
+    # @SystemLogger()
     def receive_message(self):
         while True:
             try:
