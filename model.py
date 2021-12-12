@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, MetaData, ForeignKey, TIMESTAMP
+from sqlalchemy import create_engine, Column, Integer, String, MetaData, ForeignKey, TIMESTAMP, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -42,6 +42,8 @@ class Contacts(Base):
     id = Column(Integer, primary_key=True)
     client_id = Column(Integer, ForeignKey('clients.id', ondelete='CASCADE'))
     contact_id = Column(Integer, ForeignKey('clients.id', ondelete='CASCADE'))
+    # TODO write to base unique pairs
+    # UniqueConstraint('customer_id', 'location_code', name='uix_1')
 
     def __init__(self, client_id, contact_id):
         self.client_id = client_id
