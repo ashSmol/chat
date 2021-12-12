@@ -37,5 +37,19 @@ class ClientHistory(Base):
         return "<ClientHistory('%s','%s)>" % (self.login, self.info)
 
 
+class Contacts(Base):
+    __tablename__ = 'contacts'
+    id = Column(Integer, primary_key=True)
+    client_id = Column(Integer, ForeignKey('clients.id', ondelete='CASCADE'))
+    contact_id = Column(Integer, ForeignKey('clients.id', ondelete='CASCADE'))
+
+    def __init__(self, client_id, contact_id):
+        self.client_id = client_id
+        self.contact_id = contact_id
+
+    def __repr__(self):
+        return "<Contact('%s','%s)>" % (self.client_id, self.contact_id)
+
+
 metadata = Base.metadata
 metadata.create_all(DB_ENGINE)

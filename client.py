@@ -8,7 +8,7 @@ from threading import Thread
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import ACTION, PRESENCE, TIME, RESPONSE, ERROR, ACCOUNT_NAME, MESSAGE, MESSAGE_TEXT, \
-    SENDER, RECEIVER
+    SENDER, RECEIVER, GET_CONTACTS, CLIENTS_LOGINS, ADD_CONTACT, CONTACT_NAME
 import logs.client_conf_log
 from logs.system_logger import SystemLogger
 
@@ -70,7 +70,14 @@ class ChatClient(metaclass=ClientVerifierMeta):
         self.logger.info(f'сформировано сообщение {result}')
         return result
 
-    # @SystemLogger()
+    def get_contacts(self):
+        request = {
+            ACTION: GET_CONTACTS,
+            TIME: time.time(),
+            ACCOUNT_NAME: self.client_name
+        }
+        return request
+
     def process_ans(self, message):
         if RESPONSE in message:
             if message[RESPONSE] == 200:
@@ -78,6 +85,10 @@ class ChatClient(metaclass=ClientVerifierMeta):
             return f'400 : {message[ERROR]}'
         self.logger.error('Сервер вернул некорректный ответ')
         raise ValueError
+
+    def handle_get_contacts_response(self, message):
+        if message[RESPONSE] == '202' and message[CLIENTS_LOGINS]:
+            return message[CLIENTS_LOGINS]
 
     # @SystemLogger()
     def run_client(self):
@@ -88,6 +99,18 @@ class ChatClient(metaclass=ClientVerifierMeta):
             print('Соединение с сервером успешно установлено.')
         else:
             print(f'Сервер вернул ошибку: {presence_answer}')
+
+        print('Adding contact "alex"')
+        write_message_to_sock(self.add_contact_request('alex'), self.sock)
+        add_contacts_response = read_message_from_sock(self.sock)
+        self.handle_add_contact_response(add_contacts_response)
+        time.sleep(1)
+        #  получение контактов
+        write_message_to_sock(self.get_contacts(), self.sock)
+        get_contacts_response = read_message_from_sock(self.sock)
+        contacts = self.handle_get_contacts_response(get_contacts_response)
+        print(f'С Сервера загружены контакты: {contacts}')
+
         sending_thread = Thread(target=self.send_message)
         sending_thread.daemon = True
         sending_thread.start()
@@ -132,6 +155,18 @@ class ChatClient(metaclass=ClientVerifierMeta):
                         f'\n От пользователя {message[SENDER]} получено сообщение:\n - {message[MESSAGE_TEXT]}')
             except socket.error as e:
                 self.logger.error(f'потеряно соединение с сервером. {e}')
+
+    def add_contact_request(self, contact_name):
+        return {
+            ACTION: ADD_CONTACT,
+            ACCOUNT_NAME: self.client_name,
+            TIME: time.time(),
+            CONTACT_NAME: contact_name
+        }
+
+    def handle_add_contact_response(self, response):
+        if response[RESPONSE] == '202':
+            print('Contact added to contacts list OK.')
 
 
 if __name__ == '__main__':

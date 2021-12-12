@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import *
 from logs.system_logger import SystemLogger
-from model import ChatClientModel, ClientHistory
+from model import ChatClientModel, ClientHistory, Contacts
 from logs import server_conf_log
 
 
@@ -67,7 +67,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
         self.logger.info('created server object')
         self.sock = None
         Session = sessionmaker(bind=DB_ENGINE)
-        self.db_session: sessionmaker = Session()
+        self.db_session = Session()
 
     def collect_all_messages(self):
         if len(self.read_queue) > 0:
@@ -103,6 +103,19 @@ class ChatServer(metaclass=ServerVerifierMeta):
             self.collect_all_messages()
             self.build_responses()
             self.send_all()
+
+    def store_contact_to_db(self, client_login, contact_login):
+        client = self.db_session.query(ChatClientModel).filter_by(login=client_login).first()
+        contact = self.db_session.query(ChatClientModel).filter_by(login=contact_login).first()
+        if not (contact and client):
+            raise TypeError('Fail to store contact to DB client login and contact login should be specified')
+        try:
+            self.db_session.add(Contacts(client.id, contact.id))
+        except DBAPIError as err:
+            self.logger.error('Fail to store contact to DB. Transaction rolling back', err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
 
     def store_clients_to_db(self, login: str, info: str):
         # проверка есть ли в базе такой клиент
@@ -154,8 +167,25 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 self.logger.info(f'received valid message "{message}"')
                 return message[RECEIVER], message
 
+            elif ACTION in message and message[ACTION] == GET_CONTACTS and TIME in message and ACCOUNT_NAME in message:
+                client = self.db_session.query(ChatClientModel).filter_by(login=message[ACCOUNT_NAME]).first()
+                contacts = self.db_session.query(Contacts).filter_by(client_id=client.id).all()
+                result = []
+                for contact in contacts:
+                    contact_login = self.db_session.query(ChatClientModel).filter_by(id=contact.contact_id).first()
+                    result.append(contact_login.login)
+                return message[ACCOUNT_NAME], {RESPONSE: '202', CLIENTS_LOGINS: result}
+
+            elif ACTION in message and message[
+                ACTION] == ADD_CONTACT and TIME in message and ACCOUNT_NAME in message and CONTACT_NAME in message:
+                try:
+                    self.store_contact_to_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
+                except Exception as err:
+                    self.logging.ERROR(err)
+                return message[ACCOUNT_NAME], {RESPONSE: '202'}
+
             self.logger.info(f'received invalid message "{message}"')
-            return {
+            return message[ACCOUNT_NAME], {
                 RESPONSE: 400,
                 ERROR: 'Incorrect request'
             }
