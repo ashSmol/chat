@@ -43,18 +43,6 @@ class ClientVerifierMeta(type):
             raise ConnectionError('Connection type shoud be TCP!!!')
         return type.__new__(self, clsname, bases, clsdict)
 
-    # def __init__(self, clsname, bases, clsdict):
-    #     for key, value in clsdict.items():
-    #         if isinstance(value, socket.socket):
-    #             raise ValueError
-    #         if callable(value):
-    #             dis_str = dis.code_info(value)
-    #             if (dis_str.find('socket') > 0) & (dis_str.find('accept') > 0):
-    #                 raise Exception('"Accept" operation is not allowed for ChatClient')
-    #             if (dis_str.find('socket') > 0) & (dis_str.find('listen') > 0):
-    #                 raise Exception('"Listen" operation is not allowed for ChatClient')
-    #     type.__init__(self, clsname, bases, clsdict)
-
 
 class ChatClient(metaclass=ClientVerifierMeta):
     # @SystemLogger()

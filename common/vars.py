@@ -3,7 +3,8 @@ from sqlalchemy import create_engine
 DEFAULT_HOST_ADDR = '127.0.0.1'
 
 DEFAULT_HOST_PORT = 7777
-DB_ENGINE = create_engine('sqlite:///db.sqlite', echo=True)
+DB_ENGINE_PATH = 'sqlite:////Users/aleksejsiraev/PycharmProjects/chat/db.sqlite'
+DB_ENGINE = create_engine(DB_ENGINE_PATH, echo=True)
 ENCODING = 'utf-8'
 
 MAX_CONNECTIONS = 5

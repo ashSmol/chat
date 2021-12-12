@@ -12,6 +12,7 @@ from common.utils import read_message_from_sock, write_message_to_sock, get_sock
 from common.vars import *
 from logs.system_logger import SystemLogger
 from model import ChatClientModel, ClientHistory
+from logs import server_conf_log
 
 
 class NonNegative:
@@ -66,7 +67,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
         self.logger.info('created server object')
         self.sock = None
         Session = sessionmaker(bind=DB_ENGINE)
-        self.db_session = Session()
+        self.db_session: sessionmaker = Session()
 
     def collect_all_messages(self):
         if len(self.read_queue) > 0:
@@ -110,21 +111,23 @@ class ChatServer(metaclass=ServerVerifierMeta):
             if not client_id:
                 self.db_session.add(ChatClientModel(login, info))
         except Exception as err:
+            self.logger.error(err)
             print(err)
             self.db_session.rollback()
         else:
             self.db_session.commit()
 
     def store_history_to_db(self, login: str, time_: str, message_text: str):
-        try:
-            client_id = self.db_session.query(ChatClientModel).filter_by(login=login).first()
-            if client_id:
-                self.db_session.add(ClientHistory(int(client_id.id), time_, message_text))
-        except Exception as err:
-            print(err)
-            self.db_session.rollback()
-        else:
-            self.db_session.commit()
+        client = self.db_session.query(ChatClientModel).filter_by(login=login).first()
+        if client:
+            try:
+                self.db_session.add(ClientHistory(client.id, time_, message_text))
+            except Exception as err:
+                self.logger.error(err)
+                print(err)
+                self.db_session.rollback()
+            else:
+                self.db_session.commit()
 
     def build_responses(self):
         if self.received_messages:  # and self.write_queue:

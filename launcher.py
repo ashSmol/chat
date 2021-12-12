@@ -26,8 +26,7 @@ class Launcher:
     def close_all(self):
         for process in self.PROCESSES:
             process.kill()
-            # TODO FIX closing all processes, as now they do not kelled in MacOs
-
+            # TODO FIX closing all processes, as now they do not killed in MacOs
     def start_posix(self):
         self.PROCESSES.append(subprocess.Popen('open -W -a Terminal server.command'.split()))
         time.sleep(1)
