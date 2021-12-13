@@ -188,6 +188,16 @@ class ChatServer(metaclass=ServerVerifierMeta):
                     return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
                 return message[ACCOUNT_NAME], {RESPONSE: '202'}
 
+            elif ACTION in message and message[
+                ACTION] == DEL_CONTACT and TIME in message and ACCOUNT_NAME in message and CONTACT_NAME in message:
+                try:
+                    self.del_contact_from_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
+                except Exception as err:
+                    self.logger.error(err)
+                    return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
+                return message[ACCOUNT_NAME], {RESPONSE: '202'}
+
+
             self.logger.info(f'received invalid message "{message}"')
             return message[ACCOUNT_NAME], {
                 RESPONSE: 400,
@@ -218,6 +228,22 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 self.logger.info(
                     f'получатель сообщения отключился.  Адрес получателя: {receiver}. Сообщение об ошибки: {e}')
             self.messages_to_send.remove(pair)
+
+    def del_contact_from_db(self, client_login, contact_login):
+        client = self.db_session.query(ChatClientModel).filter_by(login=client_login).first()
+        contact = self.db_session.query(ChatClientModel).filter_by(login=contact_login).first()
+        if not (contact and client):
+            raise Exception('Fail to find such contact in database')
+        try:
+            query = self.db_session.query(Contacts).filter_by(client_id=client.id, contact_id=contact.id)
+            if not query.first():
+                raise Exception('The record, you are trying to delete, does not exists in your contacts.')
+            query.delete()
+        except DBAPIError as err:
+            self.logger.error('Fail to store contact to DB. Transaction rolling back', err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
 
 
 if __name__ == '__main__':

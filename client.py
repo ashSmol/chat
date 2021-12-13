@@ -8,7 +8,7 @@ from threading import Thread
 
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import ACTION, PRESENCE, TIME, RESPONSE, ERROR, ACCOUNT_NAME, MESSAGE, MESSAGE_TEXT, \
-    SENDER, RECEIVER, GET_CONTACTS, CLIENTS_LOGINS, ADD_CONTACT, CONTACT_NAME
+    SENDER, RECEIVER, GET_CONTACTS, CLIENTS_LOGINS, ADD_CONTACT, CONTACT_NAME, DEL_CONTACT
 import logs.client_conf_log
 from logs.system_logger import SystemLogger
 
@@ -99,7 +99,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
             print('Соединение с сервером успешно установлено.')
         else:
             print(f'Сервер вернул ошибку: {presence_answer}')
-
+        # добавление контакта
         print('Adding contact "alex"')
         write_message_to_sock(self.add_contact_request('alex'), self.sock)
         add_contacts_response = read_message_from_sock(self.sock)
@@ -110,6 +110,18 @@ class ChatClient(metaclass=ClientVerifierMeta):
         get_contacts_response = read_message_from_sock(self.sock)
         contacts = self.handle_get_contacts_response(get_contacts_response)
         print(f'С Сервера загружены контакты: {contacts}')
+        # удаление контакта
+        print('remove contact "alex"')
+        write_message_to_sock(self.del_contact_request('alex'), self.sock)
+        add_contacts_response = read_message_from_sock(self.sock)
+        self.handle_add_contact_response(add_contacts_response)
+        time.sleep(1)
+        # плучение списка контактов
+        write_message_to_sock(self.get_contacts(), self.sock)
+        get_contacts_response = read_message_from_sock(self.sock)
+        contacts = self.handle_get_contacts_response(get_contacts_response)
+        print(f'С Сервера загружены контакты: {contacts}')
+
 
         sending_thread = Thread(target=self.send_message)
         sending_thread.daemon = True
@@ -165,6 +177,17 @@ class ChatClient(metaclass=ClientVerifierMeta):
         }
 
     def handle_add_contact_response(self, response):
+        print(response[RESPONSE])
+
+    def del_contact_request(self, contact_name):
+        return {
+            ACTION: DEL_CONTACT,
+            ACCOUNT_NAME: self.client_name,
+            TIME: time.time(),
+            CONTACT_NAME: contact_name
+        }
+
+    def handle_del_contact_response(self, response):
         print(response[RESPONSE])
 
 
