@@ -108,8 +108,11 @@ class ChatServer(metaclass=ServerVerifierMeta):
         client = self.db_session.query(ChatClientModel).filter_by(login=client_login).first()
         contact = self.db_session.query(ChatClientModel).filter_by(login=contact_login).first()
         if not (contact and client):
-            raise TypeError('Fail to store contact to DB client login and contact login should be specified')
+            raise Exception('Fail to store contact to DB client login and contact login should be in database')
         try:
+            record = self.db_session.query(Contacts).filter_by(client_id=client.id, contact_id=contact.id).first()
+            if record:
+                raise Exception('The record, you are tryimg to add, already exists in database')
             self.db_session.add(Contacts(client.id, contact.id))
         except DBAPIError as err:
             self.logger.error('Fail to store contact to DB. Transaction rolling back', err)
@@ -181,7 +184,8 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 try:
                     self.store_contact_to_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
                 except Exception as err:
-                    self.logging.ERROR(err)
+                    self.logger.error(err)
+                    return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
                 return message[ACCOUNT_NAME], {RESPONSE: '202'}
 
             self.logger.info(f'received invalid message "{message}"')

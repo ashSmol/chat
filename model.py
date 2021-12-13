@@ -42,8 +42,7 @@ class Contacts(Base):
     id = Column(Integer, primary_key=True)
     client_id = Column(Integer, ForeignKey('clients.id', ondelete='CASCADE'))
     contact_id = Column(Integer, ForeignKey('clients.id', ondelete='CASCADE'))
-    # TODO write to base unique pairs
-    # UniqueConstraint('customer_id', 'location_code', name='uix_1')
+    __table_args__ = (UniqueConstraint('client_id', 'contact_id', name='client_contact_uc'),)
 
     def __init__(self, client_id, contact_id):
         self.client_id = client_id

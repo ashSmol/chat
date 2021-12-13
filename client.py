@@ -165,8 +165,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
         }
 
     def handle_add_contact_response(self, response):
-        if response[RESPONSE] == '202':
-            print('Contact added to contacts list OK.')
+        print(response[RESPONSE])
 
 
 if __name__ == '__main__':
