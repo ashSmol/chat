@@ -7,9 +7,12 @@ DEFAULT_HOST_ADDR = '127.0.0.1'
 DEFAULT_HOST_PORT = 7777
 if os.name == 'posix':
     DB_ENGINE_PATH = 'sqlite:////Users/aleksejsiraev/PycharmProjects/chat/db.sqlite'
+    CLIENT_DB_ENGINE_PATH = 'sqlite:////Users/aleksejsiraev/PycharmProjects/chat/client_db.sqlite'
 else:
     DB_ENGINE_PATH = 'sqlite:////db.sqlite'
+    CLIENT_DB_ENGINE_PATH = 'sqlite:////client_db.sqlite'
 DB_ENGINE = create_engine(DB_ENGINE_PATH, echo=True)
+CLIENT_DB_ENGINE = create_engine(CLIENT_DB_ENGINE_PATH, echo=True)
 ENCODING = 'utf-8'
 
 MAX_CONNECTIONS = 5

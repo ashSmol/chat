@@ -6,6 +6,12 @@ import time
 from logging import Logger
 from threading import Thread
 
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import sessionmaker
+
+import client_db_model
+import common.vars
+from client_db_model import ContactModel, ContactsHistoryModel
 from common.utils import read_message_from_sock, write_message_to_sock, get_socket_params
 from common.vars import ACTION, PRESENCE, TIME, RESPONSE, ERROR, ACCOUNT_NAME, MESSAGE, MESSAGE_TEXT, \
     SENDER, RECEIVER, GET_CONTACTS, CLIENTS_LOGINS, ADD_CONTACT, CONTACT_NAME, DEL_CONTACT
@@ -47,6 +53,8 @@ class ClientVerifierMeta(type):
 class ChatClient(metaclass=ClientVerifierMeta):
     # @SystemLogger()
     def __init__(self):
+        Session = sessionmaker(bind=common.vars.CLIENT_DB_ENGINE)
+        self.db_session = Session()
         self.logger = logging.getLogger('app.client')
         self.host_addr, self.host_port, self.client_name = get_socket_params()
 
@@ -90,6 +98,19 @@ class ChatClient(metaclass=ClientVerifierMeta):
         if message[RESPONSE] == '202' and message[CLIENTS_LOGINS]:
             return message[CLIENTS_LOGINS]
 
+    def store_contact_to_db(self, login, info):
+        # проверка есть ли в базе такой контакт
+        contact_id = self.db_session.query(ContactModel).filter_by(login=login).first()
+        try:
+            if not contact_id:
+                self.db_session.add(ContactModel(login, info))
+        except Exception as err:
+            self.logger.error(err)
+            print(err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
+
     # @SystemLogger()
     def run_client(self):
         print(f'Имя клиента: {self.client_name}')
@@ -100,10 +121,11 @@ class ChatClient(metaclass=ClientVerifierMeta):
         else:
             print(f'Сервер вернул ошибку: {presence_answer}')
         # добавление контакта
-        print('Adding contact "alex"')
-        write_message_to_sock(self.add_contact_request('alex'), self.sock)
+        contact_login = 'alex'
+        print(f'Adding contact {contact_login}')
+        write_message_to_sock(self.add_contact_request(contact_login), self.sock)
         add_contacts_response = read_message_from_sock(self.sock)
-        self.handle_add_contact_response(add_contacts_response)
+        self.handle_add_contact_response(add_contacts_response, contact_login)
         time.sleep(1)
         #  получение контактов
         write_message_to_sock(self.get_contacts(), self.sock)
@@ -112,16 +134,15 @@ class ChatClient(metaclass=ClientVerifierMeta):
         print(f'С Сервера загружены контакты: {contacts}')
         # удаление контакта
         print('remove contact "alex"')
-        write_message_to_sock(self.del_contact_request('alex'), self.sock)
+        write_message_to_sock(self.del_contact_request(contact_login), self.sock)
         add_contacts_response = read_message_from_sock(self.sock)
-        self.handle_add_contact_response(add_contacts_response)
+        self.handle_del_contact_response(add_contacts_response, contact_login)
         time.sleep(1)
         # плучение списка контактов
         write_message_to_sock(self.get_contacts(), self.sock)
         get_contacts_response = read_message_from_sock(self.sock)
         contacts = self.handle_get_contacts_response(get_contacts_response)
         print(f'С Сервера загружены контакты: {contacts}')
-
 
         sending_thread = Thread(target=self.send_message)
         sending_thread.daemon = True
@@ -144,6 +165,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
             message = self.create_text_message(message_receiver, text)
             try:
                 write_message_to_sock(message, self.sock)
+                self.store_msg_to_db(message_receiver, text)
             except socket.error as e:
                 self.logger.error(f'потеряно соединение с сервером. {e}')
 
@@ -176,8 +198,12 @@ class ChatClient(metaclass=ClientVerifierMeta):
             CONTACT_NAME: contact_name
         }
 
-    def handle_add_contact_response(self, response):
-        print(response[RESPONSE])
+    def handle_add_contact_response(self, response, contact_login):
+        if response[RESPONSE] == '202':
+            print('Contact is added successfully')
+            self.store_contact_to_db(contact_login, time.time())
+        else:
+            print(response[RESPONSE])
 
     def del_contact_request(self, contact_name):
         return {
@@ -187,8 +213,33 @@ class ChatClient(metaclass=ClientVerifierMeta):
             CONTACT_NAME: contact_name
         }
 
-    def handle_del_contact_response(self, response):
-        print(response[RESPONSE])
+    def handle_del_contact_response(self, response, contact_login):
+        if response[RESPONSE] == '202':
+            print('Contact is removed successfully')
+            self.del_contact_from_db(contact_login)
+        else:
+            print(response[RESPONSE])
+
+    def del_contact_from_db(self, contact_login):
+        try:
+            self.db_session.query(ContactModel).filter_by(login=contact_login).delete()
+        except Exception as err:
+            self.logger.error(err)
+            print(err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
+
+    def store_msg_to_db(self, message_receiver, text):
+        self.store_contact_to_db(message_receiver, time.time())
+        contact = self.db_session.query(ContactModel).filter_by(login=message_receiver).first()
+        try:
+            self.db_session.add(ContactsHistoryModel(contact_id=contact.id, timestamp=time.time(), message_text=text))
+        except DBAPIError as err:
+            self.logger.error(err)
+            self.db_session.rollback()
+        else:
+            self.db_session.commit()
 
 
 if __name__ == '__main__':
