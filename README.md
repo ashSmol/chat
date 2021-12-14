@@ -3,7 +3,8 @@
 
 launcher.py - starts server and several clients
 
-server.py - starts server
+server.py - starts server. 
+
 client.py - starts client
 
 After client is started, it tries to add new contact with login "alex".
