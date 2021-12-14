@@ -1,6 +1,6 @@
 1. set up DB_ENGINE_PATH in common/vars.py
 2. set up CLIENT_DB_ENGINE_PATH in common/vars.py
-3. Run model.py to create database.
+3. Run model.py and client_db_model to create database.
 
 launcher.py - starts server and several clients
 
