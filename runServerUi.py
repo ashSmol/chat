@@ -41,9 +41,11 @@ class Ui_MainWindow(object):
         self.getClientsBtn = QtWidgets.QPushButton(self.verticalLayoutWidget)
         self.getClientsBtn.setObjectName("getClientsBtn")
         self.verticalLayout.addWidget(self.getClientsBtn)
-        self.clientsListView = QtWidgets.QListView(self.centralwidget)
+
+        self.clientsListView = QtWidgets.QListWidget(self.centralwidget)
         self.clientsListView.setGeometry(QtCore.QRect(240, 70, 301, 192))
         self.clientsListView.setObjectName("clientsListView")
+
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setGeometry(QtCore.QRect(250, 20, 71, 16))
         self.label.setObjectName("label")
@@ -102,7 +104,10 @@ class Ui_MainWindow(object):
             self.consoleOutTextBrowser.append('Server is already running!')
 
     def getClients(self):
-        print(self.serverObj.contacts.keys())
+        self.clientsListView.clear()
+        clients = self.serverObj.contacts.keys()
+        self.clientsListView.addItems(clients)
+        print(clients)
 
 
 if __name__ == '__main__':
