@@ -52,11 +52,17 @@ class ClientVerifierMeta(type):
 
 class ChatClient(metaclass=ClientVerifierMeta):
     # @SystemLogger()
-    def __init__(self):
+    def __init__(self, host_ip_addr=None, host_port=None, client_login=None):
         Session = sessionmaker(bind=common.vars.CLIENT_DB_ENGINE)
         self.db_session = Session()
         self.logger = logging.getLogger('app.client')
         self.host_addr, self.host_port, self.client_name = get_socket_params()
+        if host_ip_addr:
+            self.host_addr = host_ip_addr
+        if host_port:
+            self.host_port = int(host_port)
+        if client_login:
+            self.client_name = client_login
 
     # @SystemLogger()
     def run_socket(self):
@@ -67,6 +73,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
             self.logger.info(f'connected to server {self.host_addr}:{self.host_port}')
         except Exception as e:
             self.logger.critical(f'fail to connect to server {self.host_addr}:{self.host_port} - {e}')
+        return self.sock
 
     # @SystemLogger()
     def create_presence(self):
@@ -77,6 +84,10 @@ class ChatClient(metaclass=ClientVerifierMeta):
         }
         self.logger.info(f'сформировано сообщение {result}')
         return result
+
+    def get_contacts_from_db(self):
+        contacts = self.db_session.query(ContactModel).all()
+        return [contact.login for contact in contacts]
 
     def get_contacts(self):
         request = {

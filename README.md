@@ -4,9 +4,13 @@
 
 launcher.py - starts server and several clients
 
-server.py - starts server. 
+server.py - starts server in terminal. 
+
 runServerUi.py - run Server with GUI
-client.py - starts client
+
+client.py - starts client in terminal
+
+runClientUi.py - starts chat client with GUI
 
 After client is started, it tries to add new contact with login "alex".
 Then requests all contacts.
