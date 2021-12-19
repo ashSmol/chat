@@ -9,12 +9,18 @@ class Launcher:
     PROCESSES = []
 
     def start_server(self):
-        self.PROCESSES.append(
-            subprocess.Popen('venv/Scripts/python server.py', creationflags=subprocess.CREATE_NEW_CONSOLE))
+        if os.name == 'posix':
+            self.PROCESSES.append(subprocess.Popen('open -W -a Terminal server.command'.split()))
+        else:
+            self.PROCESSES.append(
+                subprocess.Popen('venv/Scripts/python server.py', creationflags=subprocess.CREATE_NEW_CONSOLE))
 
     def start_client(self, client_name):
-        self.PROCESSES.append(subprocess.Popen(f'venv/Scripts/python client.py -n {client_name}',
-                                               creationflags=subprocess.CREATE_NEW_CONSOLE))
+        if not os.name == 'posix':
+            self.PROCESSES.append(subprocess.Popen(f'venv/Scripts/python client.py -n {client_name}',
+                                                   creationflags=subprocess.CREATE_NEW_CONSOLE))
+        else:
+            self.PROCESSES.append(subprocess.Popen('open -W -a Terminal client1.command'.split()))
 
     def start_win(self):
         self.start_server()
@@ -27,6 +33,7 @@ class Launcher:
         for process in self.PROCESSES:
             process.kill()
             # TODO FIX closing all processes, as now they do not killed in MacOs
+
     def start_posix(self):
         self.PROCESSES.append(subprocess.Popen('open -W -a Terminal server.command'.split()))
         time.sleep(1)

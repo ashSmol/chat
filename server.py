@@ -2,6 +2,7 @@ import dis
 import logging
 import select
 import socket
+import subprocess
 import time
 from socket import *
 
@@ -82,9 +83,11 @@ class ChatServer(metaclass=ServerVerifierMeta):
                         self.all_clients.remove(client)
                         self.read_queue.remove(client)
 
-    def start_listen(self):
+    def start_listen(self, port_num=None):
         self.sock = socket(AF_INET, SOCK_STREAM)
         addr, self.port, _ = get_socket_params()
+        if port_num:
+            self.port = port_num
         self.sock.bind((addr, self.port))
         self.sock.settimeout(0.5)
         self.logger.info(f'socket bind to addr {addr}:{self.port}')
@@ -197,7 +200,6 @@ class ChatServer(metaclass=ServerVerifierMeta):
                     return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
                 return message[ACCOUNT_NAME], {RESPONSE: '202'}
 
-
             self.logger.info(f'received invalid message "{message}"')
             return message[ACCOUNT_NAME], {
                 RESPONSE: 400,
@@ -244,6 +246,10 @@ class ChatServer(metaclass=ServerVerifierMeta):
             self.db_session.rollback()
         else:
             self.db_session.commit()
+
+    def stop(self):
+        print('stopping server')
+        del self
 
 
 if __name__ == '__main__':
