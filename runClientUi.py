@@ -9,6 +9,7 @@
 import socket
 import sys
 import threading
+import time
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
@@ -79,6 +80,7 @@ class Ui_MainWindow(object):
 
         self.connectPushButton.clicked.connect(self.connect_to_server)
         self.sendMsgPushButton.clicked.connect(self.send_msg)
+        self.addContactPushButton.clicked.connect(self.add_contact_to_list)
 
     def connect_to_server(self):
         if not self.chat_client_obj:
@@ -106,6 +108,7 @@ class Ui_MainWindow(object):
             sending_msg_thread.start()
 
     def send_msg(self):
+        self_user_login = self.chat_client_obj.client_name
         if (self.contactsListWidget.currentItem() is not None) & (self.msgTextLineEdit.text() != ''):
             message_receiver = self.contactsListWidget.currentItem().text()
             text = self.msgTextLineEdit.text()
@@ -113,20 +116,35 @@ class Ui_MainWindow(object):
             try:
                 write_message_to_sock(message, self.sock)
                 self.chat_client_obj.store_msg_to_db(message_receiver, text)
+                self.chatTextBrowser.append(f'{self_user_login} to {message_receiver}: \n{text}')
             except socket.error as e:
                 self.chatTextBrowser.append(f'потеряно соединение с сервером. {e}')
 
     def receive_msg(self):
+        self_user_login = self.chat_client_obj.client_name
         while True:
             try:
                 message = read_message_from_sock(self.sock)
                 if message:
-                    self.chatTextBrowser.append(f'{message[SENDER]}: {message[MESSAGE_TEXT]}')
+                    self.chatTextBrowser.append(f'{message[SENDER]} to {self_user_login}:\n {message[MESSAGE_TEXT]}')
             except socket.error as e:
                 self.chatTextBrowser.append(f'потеряно соединение с сервером. {e}')
 
     def get_contacts(self):
-        self.contactsListWidget.addItems(self.chat_client_obj.get_contacts_from_db())
+        if self.chat_client_obj:
+            self.contactsListWidget.addItems(self.chat_client_obj.get_contacts_from_db())
+        else:
+            self.chatTextBrowser.append('You should connect to server first')
+
+    def add_contact_to_list(self):
+        if self.contactLineEdit.text() is not '':
+            new_contact_login = self.contactLineEdit.text()
+            try:
+                self.chat_client_obj.store_contact_to_db(new_contact_login, time.time())
+            except Exception as err:
+                self.chatTextBrowser.append(f'Fail to store new contact to DB:\n {err.args[0]}')
+            self.contactsListWidget.clear()
+            self.get_contacts()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
