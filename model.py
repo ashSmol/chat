@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, Column, Integer, String, MetaData, ForeignKey, TIMESTAMP, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, String, MetaData, ForeignKey, TIMESTAMP, UniqueConstraint, \
+    LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -12,10 +13,12 @@ class ChatClientModel(Base):
     id = Column(Integer, primary_key=True)
     login = Column(String, unique=True)
     info = Column(String)
+    password = Column(LargeBinary)
 
-    def __init__(self, login, info):
+    def __init__(self, login, info, password):
         self.login = login
         self.info = info
+        self.password = password
 
     def __repr__(self):
         return "<Client('%s','%s)>" % (self.login, self.info)

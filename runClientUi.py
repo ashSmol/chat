@@ -15,7 +15,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from client import ChatClient
 from common.utils import read_message_from_sock, write_message_to_sock
-from common.vars import SENDER, MESSAGE_TEXT
+from common.vars import SENDER, MESSAGE_TEXT, MESSAGE
 
 
 class Ui_MainWindow(object):
@@ -64,8 +64,14 @@ class Ui_MainWindow(object):
         self.connectPushButton.setGeometry(QtCore.QRect(220, 50, 121, 26))
         self.connectPushButton.setObjectName("connectPushButton")
         self.loginLineEdit = QtWidgets.QLineEdit(self.centralwidget)
-        self.loginLineEdit.setGeometry(QtCore.QRect(20, 20, 113, 22))
+        self.loginLineEdit.setGeometry(QtCore.QRect(20, 20, 120, 22))
         self.loginLineEdit.setObjectName("loginLineEdit")
+
+        self.passwordLineEdit = QtWidgets.QLineEdit(self.centralwidget)
+        self.passwordLineEdit.setGeometry(QtCore.QRect(140, 20, 120, 22))
+        self.passwordLineEdit.setObjectName("passwordLineEdit")
+        self.passwordLineEdit.setText('password')
+
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 491, 21))
@@ -87,25 +93,27 @@ class Ui_MainWindow(object):
             addr = self.serverIPLineEdit.text()
             port = self.serverPortLineEdit.text()
             login = self.loginLineEdit.text()
-            self.chat_client_obj = ChatClient(addr, port, login)
+            password = self.passwordLineEdit.text()
+            self.chat_client_obj = ChatClient(addr, port, login, password)
             self.sock = self.chat_client_obj.run_socket()
 
-            write_message_to_sock(self.chat_client_obj.create_presence(), self.sock)
-            presence_answer = self.chat_client_obj.process_ans(read_message_from_sock(self.sock))
-            if presence_answer == '200 : OK':
-                self.chatTextBrowser.append('Соединение с сервером успешно установлено.')
-            else:
-                self.chatTextBrowser.append(f'Сервер вернул ошибку: {presence_answer}')
+            presence_msg = self.chat_client_obj.create_presence()
+            self.chatTextBrowser.append(presence_msg[MESSAGE])
+            if presence_msg['code'] == 400:
+                self.sock.close()
+                self.chatTextBrowser.append('Closing connection!\nPlease enter valid credentials and retry1')
 
-            self.get_contacts()
+            if presence_msg['code'] == 200:
+                self.chatTextBrowser.append('Authentication successful!')
+                self.get_contacts()
 
-            receiving_thread = threading.Thread(target=self.receive_msg)
-            receiving_thread.daemon = True
-            receiving_thread.start()
+                receiving_thread = threading.Thread(target=self.receive_msg)
+                receiving_thread.daemon = True
+                receiving_thread.start()
 
-            sending_msg_thread = threading.Thread(target=self.send_msg)
-            sending_msg_thread.daemon = True
-            sending_msg_thread.start()
+                sending_msg_thread = threading.Thread(target=self.send_msg)
+                sending_msg_thread.daemon = True
+                sending_msg_thread.start()
 
     def send_msg(self):
         self_user_login = self.chat_client_obj.client_name
@@ -137,7 +145,7 @@ class Ui_MainWindow(object):
             self.chatTextBrowser.append('You should connect to server first')
 
     def add_contact_to_list(self):
-        if self.contactLineEdit.text() is not '':
+        if self.contactLineEdit.text() != '':
             new_contact_login = self.contactLineEdit.text()
             try:
                 self.chat_client_obj.store_contact_to_db(new_contact_login, time.time())

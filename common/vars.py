@@ -20,6 +20,8 @@ MAX_CONNECTIONS = 5
 MAX_PACKAGE_LENGTH = 1024
 
 ACTION = 'action'
+AUTHENTICATE = 'authenticate'
+ACCOUNT_PASSWORD = 'account_password'
 MESSAGE = 'message'
 MESSAGE_TEXT = 'message_text'
 GET_CONTACTS = 'get_contacts'
@@ -34,7 +36,7 @@ ACCOUNT_NAME = 'acc_name'
 SENDER = 'sender'
 RECEIVER = 'receiver'
 DEFAULT_CLIENT_TYPE = RECEIVER
-
+SALT = b'secret_key'
 PRESENCE = 'presence'
 RESPONSE = 'response'
 ERROR = 'error'

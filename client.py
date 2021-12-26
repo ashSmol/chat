@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 import socket
@@ -52,7 +53,8 @@ class ClientVerifierMeta(type):
 
 class ChatClient(metaclass=ClientVerifierMeta):
     # @SystemLogger()
-    def __init__(self, host_ip_addr=None, host_port=None, client_login=None):
+    def __init__(self, host_ip_addr=None, host_port=None, client_login=None, password=None):
+        self.password = password
         Session = sessionmaker(bind=common.vars.CLIENT_DB_ENGINE)
         self.db_session = Session()
         self.logger = logging.getLogger('app.client')
@@ -64,7 +66,6 @@ class ChatClient(metaclass=ClientVerifierMeta):
         if client_login:
             self.client_name = client_login
 
-    # @SystemLogger()
     def run_socket(self):
         self.logger.debug('running socket')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -75,15 +76,23 @@ class ChatClient(metaclass=ClientVerifierMeta):
             self.logger.critical(f'fail to connect to server {self.host_addr}:{self.host_port} - {e}')
         return self.sock
 
-    # @SystemLogger()
-    def create_presence(self):
+    def presence_request(self):
         result = {
             ACTION: PRESENCE,
             TIME: time.time(),
-            ACCOUNT_NAME: self.client_name
+            ACCOUNT_NAME: self.client_name,
+            common.vars.ACCOUNT_PASSWORD: self.password
         }
         self.logger.info(f'сформировано сообщение {result}')
         return result
+
+    def create_presence(self):
+        write_message_to_sock(self.presence_request(), self.sock)
+        presence_answer = self.process_ans(read_message_from_sock(self.sock))
+        if presence_answer == '200 : OK':
+            return {'code': 200, 'message': 'Соединение с сервером успешно установлено.'}
+        else:
+            return {'code': 400, 'message': f'Сервер вернул ошибку: {presence_answer}'}
 
     def get_contacts_from_db(self):
         contacts = self.db_session.query(ContactModel).all()
@@ -101,7 +110,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
         if RESPONSE in message:
             if message[RESPONSE] == 200:
                 return '200 : OK'
-            return f'400 : {message[ERROR]}'
+            return f'400 : {message[MESSAGE]}'
         self.logger.error('Сервер вернул некорректный ответ')
         raise ValueError
 
@@ -125,7 +134,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
     # @SystemLogger()
     def run_client(self):
         print(f'Имя клиента: {self.client_name}')
-        write_message_to_sock(self.create_presence(), self.sock)
+        write_message_to_sock(self.presence_request(), self.sock)
         presence_answer = self.process_ans(read_message_from_sock(self.sock))
         if presence_answer == '200 : OK':
             print('Соединение с сервером успешно установлено.')

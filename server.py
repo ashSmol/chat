@@ -1,4 +1,6 @@
 import dis
+import hashlib
+import hmac
 import logging
 import select
 import socket
@@ -56,6 +58,7 @@ class ServerVerifierMeta(type):
 class ChatServer(metaclass=ServerVerifierMeta):
     # @SystemLogger()
     port = NonNegative()
+    auth_clients = []
 
     def __init__(self):
         self.contacts = dict()
@@ -123,12 +126,9 @@ class ChatServer(metaclass=ServerVerifierMeta):
         else:
             self.db_session.commit()
 
-    def store_clients_to_db(self, login: str, info: str):
-        # проверка есть ли в базе такой клиент
-        client_id = self.db_session.query(ChatClientModel).filter_by(login=login).first()
+    def store_clients_to_db(self, login: str, info: str, password: str):
         try:
-            if not client_id:
-                self.db_session.add(ChatClientModel(login, info))
+            self.db_session.add(ChatClientModel(login, info, cipher(password)))
         except Exception as err:
             self.logger.error(err)
             print(err)
@@ -158,47 +158,23 @@ class ChatServer(metaclass=ServerVerifierMeta):
     def process_message(self, message):
         try:
             if ACTION in message and message[ACTION] == PRESENCE and TIME in message \
-                    and ACCOUNT_NAME in message:
-                self.logger.info(f'received valid message "{message}" from user with name: {message[ACCOUNT_NAME]}')
-                try:
-                    self.store_clients_to_db(message[ACCOUNT_NAME], message[TIME])
-                except DBAPIError as err:
-                    print(err)
-
-                return message[ACCOUNT_NAME], {RESPONSE: 200}
+                    and ACCOUNT_NAME in message and ACCOUNT_PASSWORD in message:
+                return self.handle_presence_rq(message)
 
             elif ACTION in message and message[ACTION] == MESSAGE and MESSAGE_TEXT in message and TIME in message \
                     and SENDER in message and RECEIVER in message:
-                self.store_history_to_db(message[SENDER], message[TIME], message[MESSAGE_TEXT])
-                self.logger.info(f'received valid message "{message}"')
-                return message[RECEIVER], message
+                return self.handle_message_rq(message)
 
             elif ACTION in message and message[ACTION] == GET_CONTACTS and TIME in message and ACCOUNT_NAME in message:
-                client = self.db_session.query(ChatClientModel).filter_by(login=message[ACCOUNT_NAME]).first()
-                contacts = self.db_session.query(Contacts).filter_by(client_id=client.id).all()
-                result = []
-                for contact in contacts:
-                    contact_login = self.db_session.query(ChatClientModel).filter_by(id=contact.contact_id).first()
-                    result.append(contact_login.login)
-                return message[ACCOUNT_NAME], {RESPONSE: '202', CLIENTS_LOGINS: result}
+                return self.handle_get_contacts_rq(message)
 
             elif ACTION in message and message[
                 ACTION] == ADD_CONTACT and TIME in message and ACCOUNT_NAME in message and CONTACT_NAME in message:
-                try:
-                    self.store_contact_to_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
-                except Exception as err:
-                    self.logger.error(err)
-                    return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
-                return message[ACCOUNT_NAME], {RESPONSE: '202'}
+                return self.handle_add_contact_rq(message)
 
             elif ACTION in message and message[
                 ACTION] == DEL_CONTACT and TIME in message and ACCOUNT_NAME in message and CONTACT_NAME in message:
-                try:
-                    self.del_contact_from_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
-                except Exception as err:
-                    self.logger.error(err)
-                    return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
-                return message[ACCOUNT_NAME], {RESPONSE: '202'}
+                return self.handle_del_contact_rq(message)
 
             self.logger.info(f'received invalid message "{message}"')
             return message[ACCOUNT_NAME], {
@@ -206,8 +182,62 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 ERROR: 'Incorrect request'
             }
         except Exception as e:
-            print('Не удалось обработать сообщение', e)
+            print('Не удалось обработать сообщение', e.with_traceback())
             self.logger.error(f'fail to process message: "{message}"')
+
+    def handle_presence_rq(self, message, client=None):
+        self.logger.info(f'received valid message "{message}" from user with name: {message[ACCOUNT_NAME]}')
+        try:
+            client = self.db_session.query(ChatClientModel).filter_by(login=message[ACCOUNT_NAME]).first()
+        except DBAPIError as err:
+            print(err.args[0])
+            self.logger.error(err.args[0])
+        if not client:
+            try:
+                client = ChatClientModel(message[ACCOUNT_NAME], message[TIME],
+                                         message[ACCOUNT_PASSWORD])
+                self.store_clients_to_db(client)
+            except DBAPIError as err:
+                print(err.args[0])
+                self.logger.error(err.args[0])
+        if client is not None:
+            if not self.client_authenticate(client, message[ACCOUNT_PASSWORD]):
+                return message[ACCOUNT_NAME], {
+                    RESPONSE: 400,
+                    MESSAGE: 'Incorrect login or password'
+                }
+        self.auth_clients.append(client.login)
+        return message[ACCOUNT_NAME], {RESPONSE: 200, MESSAGE: 'Authentication successful'}
+
+    def handle_del_contact_rq(self, message):
+        try:
+            self.del_contact_from_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
+        except Exception as err:
+            self.logger.error(err)
+            return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
+        return message[ACCOUNT_NAME], {RESPONSE: '202'}
+
+    def handle_add_contact_rq(self, message):
+        try:
+            self.store_contact_to_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
+        except Exception as err:
+            self.logger.error(err)
+            return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
+        return message[ACCOUNT_NAME], {RESPONSE: '202'}
+
+    def handle_get_contacts_rq(self, message):
+        client = self.db_session.query(ChatClientModel).filter_by(login=message[ACCOUNT_NAME]).first()
+        contacts = self.db_session.query(Contacts).filter_by(client_id=client.id).all()
+        result = []
+        for contact in contacts:
+            contact_login = self.db_session.query(ChatClientModel).filter_by(id=contact.contact_id).first()
+            result.append(contact_login.login)
+        return message[ACCOUNT_NAME], {RESPONSE: '202', CLIENTS_LOGINS: result}
+
+    def handle_message_rq(self, message):
+        self.store_history_to_db(message[SENDER], message[TIME], message[MESSAGE_TEXT])
+        self.logger.info(f'received valid message "{message}"')
+        return message[RECEIVER], message
 
     def send_all(self):
         for pair in self.messages_to_send:
@@ -250,6 +280,13 @@ class ChatServer(metaclass=ServerVerifierMeta):
     def stop(self):
         print('stopping server')
         del self
+
+    def client_authenticate(self, client: ChatClientModel, password: str):
+        return hmac.compare_digest(client.password, cipher(password))
+
+
+def cipher(password):
+    return hashlib.pbkdf2_hmac('sha256', password.encode(), SALT, 10000)
 
 
 if __name__ == '__main__':

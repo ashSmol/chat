@@ -21,7 +21,7 @@ class TestAnswerProcessing(unittest.TestCase):
         self.assertRaises(ValueError, ChatClient().process_ans, {ERROR: 'Bad Request'})
 
     def test_create_presense(self):
-        presence_rq = ChatClient().create_presence()
+        presence_rq = ChatClient().presence_request()
         presence_rq[TIME] = 123.123
         self.assertEqual(presence_rq, {ACTION: PRESENCE, TIME: 123.123, USER_ACCOUNT: {ACCOUNT_NAME: 'Guest'}})
 
