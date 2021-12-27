@@ -18,6 +18,16 @@ from model import ChatClientModel, ClientHistory, Contacts
 from logs import server_conf_log
 
 
+def login_required(func):
+    def wrapper(self, message):
+        if message[ACCOUNT_NAME] in self.auth_clients:
+            return func(self, message)
+        else:
+            return message[ACCOUNT_NAME], {RESPONSE: 400, MESSAGE: 'Client is not authenticated'}
+
+    return wrapper
+
+
 class NonNegative:
     def __get__(self, instance, owner):
         return instance.__dict__[self.name]
@@ -58,7 +68,6 @@ class ServerVerifierMeta(type):
 class ChatServer(metaclass=ServerVerifierMeta):
     # @SystemLogger()
     port = NonNegative()
-    auth_clients = []
 
     def __init__(self):
         self.contacts = dict()
@@ -72,6 +81,8 @@ class ChatServer(metaclass=ServerVerifierMeta):
         self.sock = None
         Session = sessionmaker(bind=DB_ENGINE)
         self.db_session = Session()
+        self.current_msg = None
+        self.auth_clients = []
 
     def collect_all_messages(self):
         if len(self.read_queue) > 0:
@@ -162,7 +173,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 return self.handle_presence_rq(message)
 
             elif ACTION in message and message[ACTION] == MESSAGE and MESSAGE_TEXT in message and TIME in message \
-                    and SENDER in message and RECEIVER in message:
+                    and ACCOUNT_NAME in message and RECEIVER in message:
                 return self.handle_message_rq(message)
 
             elif ACTION in message and message[ACTION] == GET_CONTACTS and TIME in message and ACCOUNT_NAME in message:
@@ -182,7 +193,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 ERROR: 'Incorrect request'
             }
         except Exception as e:
-            print('Не удалось обработать сообщение', e.with_traceback())
+            print('Не удалось обработать сообщение' + e.args[0])
             self.logger.error(f'fail to process message: "{message}"')
 
     def handle_presence_rq(self, message, client=None):
@@ -209,6 +220,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
         self.auth_clients.append(client.login)
         return message[ACCOUNT_NAME], {RESPONSE: 200, MESSAGE: 'Authentication successful'}
 
+    @login_required
     def handle_del_contact_rq(self, message):
         try:
             self.del_contact_from_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
@@ -217,6 +229,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
             return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
         return message[ACCOUNT_NAME], {RESPONSE: '202'}
 
+    @login_required
     def handle_add_contact_rq(self, message):
         try:
             self.store_contact_to_db(message[ACCOUNT_NAME], message[CONTACT_NAME])
@@ -225,6 +238,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
             return message[ACCOUNT_NAME], {RESPONSE: err.args[0]}
         return message[ACCOUNT_NAME], {RESPONSE: '202'}
 
+    @login_required
     def handle_get_contacts_rq(self, message):
         client = self.db_session.query(ChatClientModel).filter_by(login=message[ACCOUNT_NAME]).first()
         contacts = self.db_session.query(Contacts).filter_by(client_id=client.id).all()
@@ -234,8 +248,9 @@ class ChatServer(metaclass=ServerVerifierMeta):
             result.append(contact_login.login)
         return message[ACCOUNT_NAME], {RESPONSE: '202', CLIENTS_LOGINS: result}
 
+    @login_required
     def handle_message_rq(self, message):
-        self.store_history_to_db(message[SENDER], message[TIME], message[MESSAGE_TEXT])
+        self.store_history_to_db(message[ACCOUNT_NAME], message[TIME], message[MESSAGE_TEXT])
         self.logger.info(f'received valid message "{message}"')
         return message[RECEIVER], message
 
@@ -246,7 +261,7 @@ class ChatServer(metaclass=ServerVerifierMeta):
                 receiver = self.contacts[receiver_name]
                 # if receiver in self.write_queue:
             else:
-                receiver = self.contacts[message[SENDER]]
+                receiver = self.contacts[message[ACCOUNT_NAME]]
                 message = {
                     ACTION: MESSAGE,
                     RECEIVER: receiver_name,

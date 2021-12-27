@@ -15,7 +15,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 from client import ChatClient
 from common.utils import read_message_from_sock, write_message_to_sock
-from common.vars import SENDER, MESSAGE_TEXT, MESSAGE
+from common.vars import SENDER, MESSAGE_TEXT, MESSAGE, ACCOUNT_NAME
 
 
 class Ui_MainWindow(object):
@@ -101,7 +101,7 @@ class Ui_MainWindow(object):
             self.chatTextBrowser.append(presence_msg[MESSAGE])
             if presence_msg['code'] == 400:
                 self.sock.close()
-                self.chatTextBrowser.append('Closing connection!\nPlease enter valid credentials and retry1')
+                self.chatTextBrowser.append('Closing connection!\nMessages won''t be transferred to server')
 
             if presence_msg['code'] == 200:
                 self.chatTextBrowser.append('Authentication successful!')
@@ -134,7 +134,8 @@ class Ui_MainWindow(object):
             try:
                 message = read_message_from_sock(self.sock)
                 if message:
-                    self.chatTextBrowser.append(f'{message[SENDER]} to {self_user_login}:\n {message[MESSAGE_TEXT]}')
+                    self.chatTextBrowser.append(
+                        f'{message[ACCOUNT_NAME]} to {self_user_login}:\n {message[MESSAGE_TEXT]}')
             except socket.error as e:
                 self.chatTextBrowser.append(f'потеряно соединение с сервером. {e}')
 

@@ -194,7 +194,7 @@ class ChatClient(metaclass=ClientVerifierMeta):
         return {
             ACTION: MESSAGE,
             RECEIVER: receiver,
-            SENDER: self.client_name,
+            ACCOUNT_NAME: self.client_name,
             TIME: time.time(),
             MESSAGE_TEXT: text
         }
